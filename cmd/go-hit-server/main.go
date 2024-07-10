@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mohitgupta07/go-hit/internal/datastore"
-	"github.com/mohitgupta07/go-hit/internal/persistence"
+	"github.com/Mohitgupta07/go-hit/internal/datastore"
+	"github.com/Mohitgupta07/go-hit/internal/persistence"
 )
 
 var kvStore *datastore.KeyValueStore

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mohitgupta07/go-hit/internal/persistence" // Import persistence package
+	"github.com/Mohitgupta07/go-hit/internal/persistence" // Import persistence package
 )
 
 type KeyValueStore struct {
@@ -103,4 +103,3 @@ func (kv *KeyValueStore) worker() {
 		}
 	}
 }
-
