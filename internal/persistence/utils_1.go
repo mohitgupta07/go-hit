@@ -16,19 +16,11 @@ func singleLoad(filepath string) (string, string, error) {
 	}
 	defer file.Close()
 
-	stat, err := file.Stat()
-	if err != nil {
-		return "", "", err
-	}
-	content := make([]byte, stat.Size())
-	_, err = file.Read(content)
-	if err != nil {
-		return "", "", err
-	}
+	// reader := bufio.NewReader(file)
+	decoder := json.NewDecoder(file)
 
 	var data map[string]string
-	err = json.Unmarshal(content, &data)
-	if err != nil {
+	if err := decoder.Decode(&data); err != nil {
 		return "", "", err
 	}
 
