@@ -1,10 +1,10 @@
 package persistence
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
-	"fmt"
 )
 
 const benchmarkDir = "./benchmark_data"
