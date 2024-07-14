@@ -64,6 +64,51 @@ func mergeResults(localData map[int]map[string]string) map[string]string {
 	return finalData
 }
 
+// Parallel merge function to merge results from all workers concurrently
+func parallelMerge(localData map[int]map[string]string) map[string]string {
+	finalData := make(map[string]string)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	// Number of goroutines should ideally be limited to prevent excessive parallelism
+	// Adjust maxGoroutines based on the workload and system capabilities
+	maxGoroutines := 5000
+	chunkSize := (len(localData) + maxGoroutines - 1) / maxGoroutines // Ceiling division
+
+	// Slice of worker IDs to process concurrently
+	workerIDs := make([]int, 0, len(localData))
+	for id := range localData {
+		workerIDs = append(workerIDs, id)
+	}
+
+	for start := 0; start < len(workerIDs); start += chunkSize {
+		end := start + chunkSize
+		if end > len(workerIDs) {
+			end = len(workerIDs)
+		}
+
+		wg.Add(1)
+		go func(start, end int) {
+			defer wg.Done()
+			localFinalData := make(map[string]string)
+			for _, id := range workerIDs[start:end] {
+				for key, value := range localData[id] {
+					localFinalData[key] = value
+				}
+			}
+			// Merge localFinalData into finalData
+			mu.Lock()
+			for key, value := range localFinalData {
+				finalData[key] = value
+			}
+			mu.Unlock()
+		}(start, end)
+	}
+
+	wg.Wait()
+	return finalData
+}
+
 // Loader utility function to manage workers and aggregate results
 func LoaderUtil(dirpath string, numWorkers int) map[string]string {
 	dir, err := os.Open(dirpath)
@@ -99,7 +144,7 @@ func LoaderUtil(dirpath string, numWorkers int) map[string]string {
 
 	// return localData[0]
 
-	finalData := mergeResults(localData)
+	finalData := parallelMerge(localData)
 
 	return finalData
 }
