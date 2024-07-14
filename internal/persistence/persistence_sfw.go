@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
 type SFWPersistence struct {
 	dirPath string
-	mu      sync.Mutex
 	queue   chan operation  // Channel for queuing operations
 	wg      *sync.WaitGroup // WaitGroup to manage concurrent operations
 	ioLimit int             // Maximum number of concurrent IO operations
@@ -44,7 +42,7 @@ func NewSFWPersistence(dirPath string, ioLimit int) (*SFWPersistence, error) {
 
 func (jp *SFWPersistence) SaveToDisk(key, value, op string) {
 	// fmt.Println("SaveToDisk called:", key, value, op)
-	jp.wg.Add(1)        // Increment WaitGroup for new operation
+	jp.wg.Add(1)                          // Increment WaitGroup for new operation
 	jp.queue <- operation{key, value, op} // Enqueue operation
 }
 
@@ -102,42 +100,7 @@ func (jp *SFWPersistence) CloseQueue() {
 }
 
 func (jp *SFWPersistence) Load() (map[string]string, error) {
-	jp.mu.Lock()
-	defer jp.mu.Unlock()
-
-	data := make(map[string]string)
-
-	err := filepath.Walk(jp.dirPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			// key := info.Name()
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-
-			var value map[string]string
-			err = json.NewDecoder(file).Decode(&value)
-			if err != nil {
-				return err
-			}
-
-			// Assuming each file contains only one key-value pair
-			for k, v := range value {
-				data[k] = v
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
+	return LoadUtil(jp.dirPath, jp.ioLimit), nil
 }
 
 // Example of usage:

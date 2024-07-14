@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"fmt"
 )
 
 const benchmarkDir = "./benchmark_data"
@@ -49,7 +50,7 @@ func BenchmarkLoad(b *testing.B) {
 		persistence.SaveToDisk(key, value, op)
 	}
 	persistence.wg.Wait()
-
+	fmt.Println("saving done")
 	// Reset benchmark timer before starting
 	b.ResetTimer()
 
