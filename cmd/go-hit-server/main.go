@@ -17,7 +17,7 @@ var kvStore *datastore.KeyValueStore
 
 func init() {
 	// Initialize JSONPersistence with file path
-	jsonPersistence := persistence.NewJSONPersistence("datastore.json")
+	jsonPersistence, _ := persistence.NewSFWPersistence("./datalake", 5)
 	// Initialize KeyValueStore with JSONPersistence
 	kvStore = datastore.NewKeyValueStore(jsonPersistence)
 	log.Println("Initialized Key Value Store")
