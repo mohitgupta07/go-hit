@@ -24,81 +24,59 @@ func (sm *SafeMap) Set(key, value string) {
 	sm.m[key] = value
 }
 
-func singleLoad(filepath string) (string, error) {
-	// Open file
-	file, err := os.Open(filepath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
+func startWorker(id int, filepath string, localData map[int]map[string]string, wg *sync.WaitGroup, semaphore chan<- struct{}) {
+	defer wg.Done()
+	semaphore <- struct{}{} // Release semaphore slot when done
 
-	// Read content
-	stat, err := file.Stat()
-	if err != nil {
-		return "", err
-	}
-	content := make([]byte, stat.Size())
-	_, err = file.Read(content)
-	if err != nil {
-		return "", err
-	}
-
-	return string(content), nil
-}
-
-func updateMapWrapper(sm *SafeMap, filepath string) {
-	data, err := singleLoad(filepath)
+	// Load data using singleLoad function and store in localData
+	k, v, err := singleLoad(filepath)
 	if err != nil {
 		fmt.Printf("Error loading file %s: %v\n", filepath, err)
 		return
 	}
-	sm.Set(filepath, data)
-	fmt.Printf("Updated SafeMap with file %s\n", filepath)
+	localData[id][k] = v
 }
 
-func processDirConcurrently(dirpath string, K int) *SafeMap {
-	resultMap := make(map[string]string)
+func processDirConcurrently(dirPath string, K int) *SafeMap {
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, K) // Semaphore to limit concurrent goroutines
-	mu := sync.Mutex{}                  // Mutex for resultMap
+	finalSafeMap := NewSafeMap()
 
-	files, err := os.ReadDir(dirpath)
+	files, err := os.ReadDir(dirPath)
 	if err != nil {
-		fmt.Printf("Error reading directory %s: %v\n", dirpath, err)
+		fmt.Printf("Error reading directory %s: %v\n", dirPath, err)
 		return nil
 	}
 
-	for _, file := range files {
+	localMaps := make(map[int]map[string]string)
+	for i := 0; i < K; i++ {
+		localMaps[i] = make(map[string]string)
+	}
+
+	semaphore := make(chan struct{}, K) // Semaphore to limit concurrent goroutines
+
+	for id, file := range files {
+		fmt.Println("ok", id%K, file)
 		if file.IsDir() {
 			continue // Skip directories
 		}
 
-		filepath := filepath.Join(dirpath, file.Name())
+		filepath := filepath.Join(dirPath, file.Name())
 
 		wg.Add(1)
-		semaphore <- struct{}{} // Acquire semaphore slot
-		go func(fp string) {
-			defer wg.Done()
-			defer func() { <-semaphore }() // Release semaphore slot when done
-
-			data, err := singleLoad(fp)
-			if err != nil {
-				fmt.Printf("Error loading file %s: %v\n", fp, err)
-				return
-			}
-
-			mu.Lock()
-			resultMap[fp] = data
-			mu.Unlock()
-			fmt.Printf("Processed file %s\n", fp)
-		}(filepath)
+		// Acquire semaphore slot
+		go startWorker(id%K, filepath, localMaps, &wg, semaphore)
+		<-semaphore
 	}
 
 	wg.Wait()
 
-	finalSafeMap := NewSafeMap()
-	for key, value := range resultMap {
-		finalSafeMap.Set(key, value)
+	// Combine all local maps into finalSafeMap
+	finalSafeMap.mu.Lock()
+	defer finalSafeMap.mu.Unlock()
+	for _, localMap := range localMaps {
+		for key, value := range localMap {
+			finalSafeMap.m[key] = value
+		}
 	}
 
 	return finalSafeMap
