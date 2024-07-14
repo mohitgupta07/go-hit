@@ -94,12 +94,17 @@ func (kv *KeyValueStore) worker() {
 	for {
 		select {
 		case req := <-kv.saveQueue:
+			log.Println("kv queue:", req)
 			kv.persistence.SaveToDisk(req.Key, req.Value, req.Op) // Call persistence function from persistence package
 			// case <-ticker.C:
 			// 	kv.persistence.SaveAllToDisk(kv.store) // Call persistence function from persistence package
 			// case <-kv.quitWorker:
 			// 	kv.persistence.SaveAllToDisk(kv.store) // Call persistence function from persistence package
-			return
+			// 	return
 		}
 	}
+}
+
+func (kv *KeyValueStore) ShutDown() {
+	kv.persistence.ShutDown()
 }

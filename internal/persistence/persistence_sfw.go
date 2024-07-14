@@ -34,12 +34,17 @@ func NewSFWPersistence(dirPath string, ioLimit int) (*SFWPersistence, error) {
 		wg:      &sync.WaitGroup{},
 	}
 
-	go jp.startWriteGroup()
+	// Start the write group in a separate goroutines.
+	for i := 0; i < ioLimit; i++ {
+		go jp.startWriteGroup()
+	}
+
 	return jp, nil
 }
 
 func (jp *SFWPersistence) SaveToDisk(key, value, op string) {
-	fmt.Println("SaveToDisk called:", key, value, op)
+	// fmt.Println("SaveToDisk called:", key, value, op)
+	jp.wg.Add(1)        // Increment WaitGroup for new operation
 	jp.queue <- operation{key, value, op} // Enqueue operation
 }
 
@@ -52,11 +57,10 @@ func (jp *SFWPersistence) SaveAllToDisk(store map[string]string) {
 func (jp *SFWPersistence) startWriteGroup() {
 	fmt.Println("StartWriteGroup called")
 	for op := range jp.queue {
-		fmt.Println("called:", op)
-		jp.wg.Add(1)        // Increment WaitGroup for new operation
-		go jp.writeData(op) // Start new goroutine to handle operation
+		// fmt.Println("called:", op)
+		jp.writeData(op) // Start new goroutine to handle operation
 	}
-	// jp.wg.Wait()
+	fmt.Println("operation processed")
 }
 
 func (jp *SFWPersistence) writeData(op operation) {
@@ -84,8 +88,19 @@ func (jp *SFWPersistence) writeData(op operation) {
 	}
 }
 
+func (jp *SFWPersistence) ShutDown() {
+	jp.CloseQueue()
+	jp.Wait()
+	fmt.Println("All operations processed")
+}
+
 func (jp *SFWPersistence) Wait() {
 	jp.wg.Wait() // Wait for all operations to finish
+}
+
+func (jp *SFWPersistence) CloseQueue() {
+	log.Println("len:", len(jp.queue))
+	close(jp.queue) // Close the queue to stop the StartWriteGroup loop
 }
 
 func (jp *SFWPersistence) Load() (map[string]string, error) {
