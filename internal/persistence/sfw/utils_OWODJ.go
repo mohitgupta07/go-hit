@@ -53,11 +53,6 @@ func processDirConcurrently(dirPath string, K int) *SafeMap {
 		combinedData[i] = NewSafeMap()
 	}
 
-	localMaps := make(map[int]*SafeMap)
-	for i := 0; i < K; i++ {
-		localMaps[i] = NewSafeMap()
-	}
-
 	semaphore := make(chan struct{}, K) // Semaphore to limit concurrent goroutines
 
 	for id, file := range files {
@@ -81,7 +76,7 @@ func processDirConcurrently(dirPath string, K int) *SafeMap {
 	// Combine all local maps into finalSafeMap
 	finalSafeMap.mu.Lock()
 	defer finalSafeMap.mu.Unlock()
-	for _, localMap := range localMaps {
+	for _, localMap := range combinedData {
 		for key, value := range localMap.m {
 			finalSafeMap.m[key] = value
 		}
