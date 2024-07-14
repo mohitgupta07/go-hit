@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/Mohitgupta07/go-hit/internal/datastore"
-	"github.com/Mohitgupta07/go-hit/internal/persistence"
+	"github.com/Mohitgupta07/go-hit/internal/persistence/sfw"
 )
 
 var kvStore *datastore.KeyValueStore
