@@ -55,7 +55,6 @@ func (jp *SFWPersistence) SaveAllToDisk(store map[string]string) {
 }
 
 func (jp *SFWPersistence) startWriteGroup() {
-	fmt.Println("StartWriteGroup called")
 	for op := range jp.queue {
 		// fmt.Println("called:", op)
 		jp.writeData(op) // Start new goroutine to handle operation
@@ -72,7 +71,6 @@ func (jp *SFWPersistence) writeData(op operation) {
 	}
 
 	filename := fmt.Sprintf("%s/key-%s.json", jp.dirPath, op.key)
-	fmt.Println(filename)
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
