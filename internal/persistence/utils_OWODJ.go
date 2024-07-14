@@ -1,5 +1,6 @@
 package persistence
 
+// One Worker and one data per Job. See how combinedData is working here.
 import (
 	"fmt"
 	"os"
@@ -24,9 +25,8 @@ func (sm *SafeMap) Set(key, value string) {
 	sm.m[key] = value
 }
 
-func startWorker(id int, filepath string, localData map[int]map[string]string, wg *sync.WaitGroup, semaphore chan<- struct{}) {
+func startWorker(id int, filepath string, localData *SafeMap, wg *sync.WaitGroup) {
 	defer wg.Done()
-	semaphore <- struct{}{} // Release semaphore slot when done
 
 	// Load data using singleLoad function and store in localData
 	k, v, err := singleLoad(filepath)
@@ -34,7 +34,8 @@ func startWorker(id int, filepath string, localData map[int]map[string]string, w
 		fmt.Printf("Error loading file %s: %v\n", filepath, err)
 		return
 	}
-	localData[id][k] = v
+	// localData.Set(k, v)
+	localData.m[k] = v
 }
 
 func processDirConcurrently(dirPath string, K int) *SafeMap {
@@ -47,15 +48,20 @@ func processDirConcurrently(dirPath string, K int) *SafeMap {
 		return nil
 	}
 
-	localMaps := make(map[int]map[string]string)
+	combinedData := make([]*SafeMap, len(files))
+	for i := 0; i < len(files); i++ {
+		combinedData[i] = NewSafeMap()
+	}
+
+	localMaps := make(map[int]*SafeMap)
 	for i := 0; i < K; i++ {
-		localMaps[i] = make(map[string]string)
+		localMaps[i] = NewSafeMap()
 	}
 
 	semaphore := make(chan struct{}, K) // Semaphore to limit concurrent goroutines
 
 	for id, file := range files {
-		fmt.Println("ok", id%K, file)
+		// fmt.Println("ok", id%K, file)
 		if file.IsDir() {
 			continue // Skip directories
 		}
@@ -63,9 +69,11 @@ func processDirConcurrently(dirPath string, K int) *SafeMap {
 		filepath := filepath.Join(dirPath, file.Name())
 
 		wg.Add(1)
-		// Acquire semaphore slot
-		go startWorker(id%K, filepath, localMaps, &wg, semaphore)
-		<-semaphore
+		go func(id int) {
+			semaphore <- struct{}{} // Acquire a token
+			startWorker(id, filepath, combinedData[id], &wg)
+			<-semaphore // Release the token
+		}(id)
 	}
 
 	wg.Wait()
@@ -74,7 +82,7 @@ func processDirConcurrently(dirPath string, K int) *SafeMap {
 	finalSafeMap.mu.Lock()
 	defer finalSafeMap.mu.Unlock()
 	for _, localMap := range localMaps {
-		for key, value := range localMap {
+		for key, value := range localMap.m {
 			finalSafeMap.m[key] = value
 		}
 	}

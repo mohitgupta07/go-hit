@@ -36,7 +36,7 @@ func BenchmarkSaveToDisk(b *testing.B) {
 // BenchmarkLoad benchmarks the Load method
 func BenchmarkLoad(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistence, err := NewSFWPersistence(benchmarkDir, 2000) // Use a higher ioLimit for benchmarks
+	persistence, err := NewSFWPersistence(benchmarkDir, 10) // Use a higher ioLimit for benchmarks
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)
 	}

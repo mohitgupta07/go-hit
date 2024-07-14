@@ -100,7 +100,7 @@ func (jp *SFWPersistence) CloseQueue() {
 }
 
 func (jp *SFWPersistence) Load() (map[string]string, error) {
-	return LoaderUtil(jp.dirPath, jp.ioLimit), nil
+	return LoadUtil(jp.dirPath, jp.ioLimit), nil
 }
 
 // Example of usage:

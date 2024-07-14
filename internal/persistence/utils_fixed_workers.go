@@ -1,5 +1,6 @@
 package persistence
 
+// Fixed Number of Workers with a Job Queue
 import (
 	"encoding/json"
 	"fmt"
@@ -37,9 +38,9 @@ func singleLoad(filepath string) (string, string, error) {
 
 // Worker function that processes files and stores results locally
 func worker(id int, file_jobs <-chan string, wg *sync.WaitGroup,
-	localData map[int]map[string]string, mu *sync.Mutex) {
+	localData []map[string]string, mu *sync.Mutex) {
 	defer wg.Done()
-	threadLocalData := make(map[string]string)
+	threadLocalData := localData[id]
 
 	for filepath := range file_jobs {
 		key, value, err := singleLoad(filepath)
@@ -47,14 +48,10 @@ func worker(id int, file_jobs <-chan string, wg *sync.WaitGroup,
 			threadLocalData[key] = value
 		}
 	}
-
-	mu.Lock()
-	localData[id] = threadLocalData
-	mu.Unlock()
 }
 
 // Function to merge results from all workers
-func mergeResults(localData map[int]map[string]string) map[string]string {
+func mergeResults(localData []map[string]string) map[string]string {
 	finalData := make(map[string]string)
 	for _, data := range localData {
 		for key, value := range data {
@@ -65,7 +62,7 @@ func mergeResults(localData map[int]map[string]string) map[string]string {
 }
 
 // Parallel merge function to merge results from all workers concurrently
-func parallelMerge(localData map[int]map[string]string) map[string]string {
+func parallelMerge(localData []map[string]string) map[string]string {
 	finalData := make(map[string]string)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -125,7 +122,12 @@ func LoaderUtil(dirpath string, numWorkers int) map[string]string {
 	}
 
 	file_jobs := make(chan string, len(files))
-	localData := make(map[int]map[string]string)
+	// localData := make(map[int]map[string]string)
+	localData := make([]map[string]string, numWorkers)
+	for i := range localData {
+		localData[i] = make(map[string]string)
+	}
+
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
@@ -144,7 +146,7 @@ func LoaderUtil(dirpath string, numWorkers int) map[string]string {
 
 	// return localData[0]
 
-	finalData := parallelMerge(localData)
+	finalData := mergeResults(localData)
 
 	return finalData
 }
