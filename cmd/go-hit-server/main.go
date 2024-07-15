@@ -15,14 +15,14 @@ import (
 
 	"github.com/Mohitgupta07/go-hit/internal/datastore"
 	"github.com/Mohitgupta07/go-hit/internal/persistence"
-	"github.com/Mohitgupta07/go-hit/internal/persistence/sfw"
 	"github.com/Mohitgupta07/go-hit/internal/persistence/dbms"
+	"github.com/Mohitgupta07/go-hit/internal/persistence/sfw"
 )
 
 var kvStore *datastore.KeyValueStore
 
 func init() {
-	persistence_mode := "sfw"
+	persistence_mode := "pg"
 	var persistenceObject persistence.Persistence
 	// Replace with the actual type
 
@@ -34,16 +34,17 @@ func init() {
 		if err != nil {
 			log.Fatalf("Failed to initialize SFW persistence object: %v", err)
 		}
-	case "rdbms":
+	case "pg":
 		var err error
-		persistenceObject, err = dbms.NewSQLStore("dbConnectionString") // Example for RDBMS
+		persistenceObject, err = dbms.NewSQLStore("postgres://newuser:password@localhost/postgres?sslmode=disable") // Example for RDBMS
 		if err != nil {
-			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)
+			log.Fatalf("Failed to initialize pg persistence object: %v", err)
+			os.Exit(1)
 		}
 	case "cassandra":
 		var err error
-		clusterHosts := []string{"127.0.0.1"} // Replace with your Cassandra cluster hosts
-		keyspace := "my_keyspace"             // Replace with your keyspace name
+		clusterHosts := []string{"127.0.0.1"}                                   // Replace with your Cassandra cluster hosts
+		keyspace := "my_keyspace"                                               // Replace with your keyspace name
 		persistenceObject, err = dbms.NewCassandraStore(clusterHosts, keyspace) // Example for RDBMS
 		if err != nil {
 			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)

@@ -6,8 +6,10 @@ import (
 	"log"
 	"os"
 	"sync"
+
 	"github.com/Mohitgupta07/go-hit/internal/persistence"
 )
+
 type SFWPersistence struct {
 	dirPath string
 	queue   chan operation  // Channel for queuing operations
