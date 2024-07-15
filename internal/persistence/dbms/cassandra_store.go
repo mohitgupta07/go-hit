@@ -1,8 +1,10 @@
 package dbms
 
 import (
-    "log"
-    "github.com/gocql/gocql"
+	"log"
+
+	"github.com/Mohitgupta07/go-hit/internal/persistence"
+	"github.com/gocql/gocql"
 )
 
 // CassandraStore represents a store backed by a Cassandra database.
@@ -11,7 +13,7 @@ type CassandraStore struct {
 }
 
 // NewCassandraStore initializes a new CassandraStore.
-func NewCassandraStore(clusterHosts []string, keyspace string) (*CassandraStore, error) {
+func NewCassandraStore(clusterHosts []string, keyspace string) (persistence.Persistence, error) {
     cluster := gocql.NewCluster(clusterHosts...)
     cluster.Keyspace = keyspace
     session, err := cluster.CreateSession()
@@ -62,3 +64,6 @@ func (s *CassandraStore) Load() (map[string]string, error) {
 func (s *CassandraStore) ShutDown() {
     s.session.Close()
 }
+
+// Ensure SQLStore implements persistence.Persistence interface
+var _ persistence.Persistence = (*CassandraStore)(nil)
