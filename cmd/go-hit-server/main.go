@@ -40,6 +40,14 @@ func init() {
 		if err != nil {
 			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)
 		}
+	case "cassandra":
+		var err error
+		clusterHosts := []string{"127.0.0.1"} // Replace with your Cassandra cluster hosts
+		keyspace := "my_keyspace"             // Replace with your keyspace name
+		persistenceObject, err = dbms.NewCassandraStore(clusterHosts, keyspace) // Example for RDBMS
+		if err != nil {
+			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)
+		}
 	default:
 		log.Fatalf("Unsupported persistence mode: %s", persistence_mode)
 	}

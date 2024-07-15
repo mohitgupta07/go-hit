@@ -4,6 +4,7 @@ import (
     "database/sql"
     "log"
     _ "github.com/lib/pq"
+    "github.com/Mohitgupta07/go-hit/internal/persistence"
 )
 
 // SQLStore represents a store backed by an SQL database.
@@ -12,7 +13,7 @@ type SQLStore struct {
 }
 
 // NewSQLStore initializes a new SQLStore.
-func NewSQLStore(connStr string) (*SQLStore, error) {
+func NewSQLStore(connStr string) (persistence.Persistence, error) {
     db, err := sql.Open("postgres", connStr)
     if err != nil {
         return nil, err
@@ -69,3 +70,6 @@ func (s *SQLStore) ShutDown() {
         log.Printf("Error shutting down database: %v", err)
     }
 }
+
+// Ensure SQLStore implements persistence.Persistence interface
+var _ persistence.Persistence = (*SQLStore)(nil)
