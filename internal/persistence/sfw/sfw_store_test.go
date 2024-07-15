@@ -1,4 +1,4 @@
-package persistence
+package sfw
 
 import (
 	"fmt"
@@ -12,7 +12,8 @@ const benchmarkDir = "./benchmark_data"
 // BenchmarkSaveToDisk benchmarks the SaveToDisk method
 func BenchmarkSaveToDisk(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistence, err := NewSFWPersistence(benchmarkDir, 10) // Use a higher ioLimit for benchmarks
+	persistenceObj, err := NewSFWPersistence(benchmarkDir, 10) // Use a higher ioLimit for benchmarks
+	persistence := persistenceObj.(*SFWPersistence)
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)
 	}
@@ -36,7 +37,8 @@ func BenchmarkSaveToDisk(b *testing.B) {
 // BenchmarkLoad benchmarks the Load method
 func BenchmarkLoad(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistence, err := NewSFWPersistence(benchmarkDir, 10) // Use a higher ioLimit for benchmarks
+	persistenceObj, err := NewSFWPersistence(benchmarkDir, 10) // Use a higher ioLimit for benchmarks
+	persistence := persistenceObj.(*SFWPersistence)
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)
 	}

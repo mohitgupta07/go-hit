@@ -1,4 +1,4 @@
-package persistence
+package sfw
 
 // One Worker and one data per Job. See how combinedData is working here.
 import (

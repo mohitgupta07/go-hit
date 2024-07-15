@@ -1,4 +1,4 @@
-package persistence
+package sfw
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 	"sync"
+	"github.com/Mohitgupta07/go-hit/internal/persistence"
 )
-
 type SFWPersistence struct {
 	dirPath string
 	queue   chan operation  // Channel for queuing operations
@@ -19,7 +19,10 @@ type operation struct {
 	key, value, op string
 }
 
-func NewSFWPersistence(dirPath string, ioLimit int) (*SFWPersistence, error) {
+// Ensure SFWPersistence implements the Persistence interface
+var _ persistence.Persistence = (*SFWPersistence)(nil)
+
+func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, error) {
 	err := os.MkdirAll(dirPath, 0755) // Ensure directory exists or create it
 	if err != nil {
 		return nil, fmt.Errorf("error creating directory: %v", err)
@@ -105,25 +108,26 @@ func (jp *SFWPersistence) Load() (map[string]string, error) {
 
 // Example of usage:
 func ExampleUsage() {
+	var per persistence.Persistence
 	dirPath := "datastore"
-	persistence, err := NewSFWPersistence(dirPath, 3) // Allow maximum 3 concurrent IO operations
+	per, err := NewSFWPersistence(dirPath, 3) // Allow maximum 3 concurrent IO operations
 	if err != nil {
 		log.Fatal("Error creating persistence object:", err)
 	}
-
+	per2 := per.(*SFWPersistence)
 	// Start the write group to consume queued operations
-	go persistence.startWriteGroup()
+	go per2.startWriteGroup()
 
 	// Example operations (you can replace these with your actual usage scenarios)
-	persistence.SaveToDisk("key1", "value1", "save")
-	persistence.SaveToDisk("key2", "value2", "delete")
-	persistence.SaveToDisk("key3", "value3", "save")
+	per.SaveToDisk("key1", "value1", "save")
+	per.SaveToDisk("key2", "value2", "delete")
+	per.SaveToDisk("key3", "value3", "save")
 
 	// Wait for all operations to finish
-	persistence.wg.Wait()
+	per2.wg.Wait()
 
 	// Example of loading all data from directory
-	data, err := persistence.Load()
+	data, err := per.Load()
 	if err != nil {
 		log.Println("Error loading data:", err)
 	} else {

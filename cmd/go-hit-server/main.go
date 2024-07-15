@@ -14,14 +14,36 @@ import (
 	"time"
 
 	"github.com/Mohitgupta07/go-hit/internal/datastore"
+	"github.com/Mohitgupta07/go-hit/internal/persistence"
 	"github.com/Mohitgupta07/go-hit/internal/persistence/sfw"
+	"github.com/Mohitgupta07/go-hit/internal/persistence/dbms"
 )
 
 var kvStore *datastore.KeyValueStore
 
 func init() {
-	// Initialize persistenceObject with file path
-	persistenceObject, _ := persistence.NewSFWPersistence("./datalake", 5)
+	persistence_mode := "sfw"
+	var persistenceObject persistence.Persistence
+	// Replace with the actual type
+
+	// Initialize persistenceObject based on the persistence_mode
+	switch persistence_mode {
+	case "sfw":
+		var err error
+		persistenceObject, err = sfw.NewSFWPersistence("./datalake", 5)
+		if err != nil {
+			log.Fatalf("Failed to initialize SFW persistence object: %v", err)
+		}
+	case "rdbms":
+		var err error
+		persistenceObject, err = dbms.NewSQLStore("dbConnectionString") // Example for RDBMS
+		if err != nil {
+			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)
+		}
+	default:
+		log.Fatalf("Unsupported persistence mode: %s", persistence_mode)
+	}
+
 	// Initialize KeyValueStore with persistenceObject
 	kvStore = datastore.NewKeyValueStore(persistenceObject)
 	log.Println("Initialized Key Value Store")

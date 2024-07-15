@@ -1,4 +1,4 @@
-package persistence
+package sfw
 
 // Fixed Number of Workers with a Job Queue
 import (
