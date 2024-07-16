@@ -22,7 +22,7 @@ import (
 var kvStore *datastore.KeyValueStore
 
 func init() {
-	persistence_mode := "pg"
+	persistence_mode := "sfw"
 	var persistenceObject persistence.Persistence
 	// Replace with the actual type
 
@@ -39,7 +39,6 @@ func init() {
 		persistenceObject, err = dbms.NewSQLStore("postgres://newuser:password@localhost/postgres?sslmode=disable") // Example for RDBMS
 		if err != nil {
 			log.Fatalf("Failed to initialize pg persistence object: %v", err)
-			os.Exit(1)
 		}
 	case "cassandra":
 		var err error
