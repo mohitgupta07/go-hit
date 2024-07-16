@@ -34,6 +34,40 @@ PASS
 ok      github.com/Mohitgupta07/go-hit/internal/persistence/dbms        27.077s
 ```
 
+--- Postgres with IO concurrency = 10
+```yaml
+Running tool: /usr/local/go/bin/go test -benchmem -run=^$ -bench ^BenchmarkSaveToDisk$ github.com/Mohitgupta07/go-hit/internal/persistence/dbms
+
+goos: darwin
+goarch: arm64
+pkg: github.com/Mohitgupta07/go-hit/internal/persistence/dbms
+=== RUN   BenchmarkSaveToDisk
+BenchmarkSaveToDisk
+2024/07/16 06:08:07 SQL Store:: PostgreSQL ready.
+2024/07/16 06:08:07 SQL Store:: PostgreSQL ready.
+2024/07/16 06:08:07 SQL Store:: PostgreSQL ready.
+2024/07/16 06:08:07 SQL Store:: PostgreSQL ready.
+2024/07/16 06:08:08 SQL Store:: PostgreSQL ready.
+BenchmarkSaveToDisk-8              29551             37869 ns/op             493 B/op         15 allocs/op
+PASS
+ok      github.com/Mohitgupta07/go-hit/internal/persistence/dbms        2.884s
+
+Running tool: /usr/local/go/bin/go test -benchmem -run=^$ -bench ^BenchmarkLoad$ github.com/Mohitgupta07/go-hit/internal/persistence/sfw
+
+goos: darwin
+goarch: arm64
+pkg: github.com/Mohitgupta07/go-hit/internal/persistence/sfw
+=== RUN   BenchmarkLoad
+BenchmarkLoad
+saving done
+saving done
+saving done
+BenchmarkLoad-8             1450           7427697 ns/op         3173033 B/op      35165 allocs/op
+PASS
+ok      github.com/Mohitgupta07/go-hit/internal/persistence/sfw 11.359s
+```
+
+
 --- SFW
 ```yaml
 Running tool: /usr/local/go/bin/go test -benchmem -run=^$ -bench ^BenchmarkSaveToDisk$ github.com/Mohitgupta07/go-hit/internal/persistence/sfw
