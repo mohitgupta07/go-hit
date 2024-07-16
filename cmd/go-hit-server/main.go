@@ -15,14 +15,17 @@ import (
 
 	"github.com/Mohitgupta07/go-hit/internal/datastore"
 	"github.com/Mohitgupta07/go-hit/internal/persistence"
+	"github.com/Mohitgupta07/go-hit/internal/persistence/cassandra"
 	"github.com/Mohitgupta07/go-hit/internal/persistence/dbms"
 	"github.com/Mohitgupta07/go-hit/internal/persistence/sfw"
 )
 
 var kvStore *datastore.KeyValueStore
 
+const IOWorkers = 5
+
 func init() {
-	persistence_mode := "sfw"
+	persistence_mode := "cassandra"
 	var persistenceObject persistence.Persistence
 	// Replace with the actual type
 
@@ -30,21 +33,21 @@ func init() {
 	switch persistence_mode {
 	case "sfw":
 		var err error
-		persistenceObject, err = sfw.NewSFWPersistence("./datalake", 5)
+		persistenceObject, err = sfw.NewSFWPersistence("./datalake", IOWorkers)
 		if err != nil {
 			log.Fatalf("Failed to initialize SFW persistence object: %v", err)
 		}
 	case "pg":
 		var err error
-		persistenceObject, err = dbms.NewSQLStore("postgres://newuser:password@localhost/postgres?sslmode=disable", "kv_store", 5) // Example for RDBMS
+		persistenceObject, err = dbms.NewSQLStore("postgres://newuser:password@localhost/postgres?sslmode=disable", "kv_store", IOWorkers) // Example for RDBMS
 		if err != nil {
 			log.Fatalf("Failed to initialize pg persistence object: %v", err)
 		}
 	case "cassandra":
 		var err error
-		clusterHosts := []string{"127.0.0.1"}                                   // Replace with your Cassandra cluster hosts
-		keyspace := "my_keyspace"                                               // Replace with your keyspace name
-		persistenceObject, err = dbms.NewCassandraStore(clusterHosts, keyspace) // Example for RDBMS
+		clusterHosts := []string{"127.0.0.1"}                                                   // Replace with your Cassandra cluster hosts
+		keyspace := "kv_store"                                                                  // Replace with your keyspace name
+		persistenceObject, err = cassandra.NewCassandraStore(clusterHosts, keyspace, IOWorkers) // Example for RDBMS
 		if err != nil {
 			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)
 		}
@@ -67,7 +70,7 @@ func main() {
 		port = "8080" // Default port
 	}
 
-	// fmt.Printf("Starting Go Redis Server on port %s...\n", port)
+	// fmt.Printf("Starting Go hit Server on port %s...\n", port)
 	// log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	server := &http.Server{Addr: ":" + port}
@@ -77,7 +80,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		fmt.Printf("Starting Go Redis Server on port %s...\n", port)
+		fmt.Printf("Starting Go hit Server on port %s...\n", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Could not listen on %s: %v\n", port, err)
 		}
