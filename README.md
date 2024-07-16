@@ -13,7 +13,7 @@ Simple objective of this is to create the best of all worlds like solution that 
 
 **Why do we need this?**
 - Easy to digest, fast to read and fault tolerant to restart.
-- Can support 100k writes a second and atleast data reload (on restart) should be atleast as fast as 100k read per sec. Note that we am just talking about a simple benchmark of write a {"key":"value"} no matter how we store in rdbms, nosql, file storage, etc.
+- Can support 100k writes a second and data reload (on restart) should be atleast as fast as 100k read per sec. Note that we are just talking about a simple benchmark of write a {"key":"value"} no matter how we store in rdbms, nosql, file storage, etc.
 
 <h1>Benchmark Report:</h1>
 
