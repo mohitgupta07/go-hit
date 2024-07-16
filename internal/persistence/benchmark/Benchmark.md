@@ -68,7 +68,7 @@ ok      github.com/Mohitgupta07/go-hit/internal/persistence/sfw 11.359s
 ```
 
 
---- SFW
+--- SFW with IO concurrency = 10
 ```yaml
 Running tool: /usr/local/go/bin/go test -benchmem -run=^$ -bench ^BenchmarkSaveToDisk$ github.com/Mohitgupta07/go-hit/internal/persistence/sfw
 

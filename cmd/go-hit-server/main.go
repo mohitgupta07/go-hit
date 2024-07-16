@@ -36,7 +36,7 @@ func init() {
 		}
 	case "pg":
 		var err error
-		persistenceObject, err = dbms.NewSQLStore("postgres://newuser:password@localhost/postgres?sslmode=disable", 5) // Example for RDBMS
+		persistenceObject, err = dbms.NewSQLStore("postgres://newuser:password@localhost/postgres?sslmode=disable", "kv_store", 5) // Example for RDBMS
 		if err != nil {
 			log.Fatalf("Failed to initialize pg persistence object: %v", err)
 		}

@@ -10,11 +10,12 @@ import (
 
 const connKey = "postgres://newuser:password@localhost/postgres?sslmode=disable"
 const ioVal = 10
+const table_name = "test_kv"
 
 // BenchmarkSaveToDisk benchmarks the SaveToDisk method
 func BenchmarkSaveToDisk(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistenceObj, err := NewSQLStore(connKey, ioVal) // Use a higher ioLimit for benchmarks
+	persistenceObj, err := NewSQLStore(connKey, table_name, ioVal) // Use a higher ioLimit for benchmarks
 	persistence := persistenceObj.(*SQLStore)
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)
@@ -36,7 +37,7 @@ func BenchmarkSaveToDisk(b *testing.B) {
 // BenchmarkLoad benchmarks the Load method
 func BenchmarkLoad(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistenceObj, err := NewSQLStore(connKey, ioVal) // Use a higher ioLimit for benchmarks
+	persistenceObj, err := NewSQLStore(connKey, table_name, ioVal) // Use a higher ioLimit for benchmarks
 	persistence := persistenceObj.(*SQLStore)
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)

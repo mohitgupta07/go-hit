@@ -2,6 +2,7 @@ package dbms
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"sync"
 
@@ -10,7 +11,7 @@ import (
 )
 
 const createTableSQL = `
-CREATE TABLE IF NOT EXISTS kv_store (
+CREATE TABLE IF NOT EXISTS %s (
     key VARCHAR(255) PRIMARY KEY,
     value TEXT
 )
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS kv_store (
 type SQLStore struct {
 	db      *sql.DB
 	table   string
-	writeCh chan operation  // Buffered channel for queuing write operations
+	writeCh chan operation // Buffered channel for queuing write operations
 	wg      *sync.WaitGroup // WaitGroup to manage concurrent operations
 }
 
@@ -28,29 +29,31 @@ type operation struct {
 	key, value, op string
 }
 
-// Function to create the kv_store table if it doesn't exist
-func createKVStoreTable(db *sql.DB) error {
-	_, err := db.Exec(createTableSQL)
+// Function to create the table if it doesn't exist
+func createTable(db *sql.DB, tableName string) error {
+	createTableStmt := fmt.Sprintf(createTableSQL, tableName)
+	_, err := db.Exec(createTableStmt)
 	return err
 }
 
-// NewSQLStore initializes a new SQLStore.
-func NewSQLStore(connStr string, maxConcurrency int) (persistence.Persistence, error) {
-	table := "kv_store"
+// NewSQLStore initializes a new SQLStore with the specified table name.
+func NewSQLStore(connStr, tableName string, maxConcurrency int) (persistence.Persistence, error) {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
 	}
+
 	// Ensure the table exists
-	if err := createKVStoreTable(db); err != nil {
-		log.Fatal(err)
+	if err := createTable(db, tableName); err != nil {
+		log.Fatalf("Error creating table %s: %v", tableName, err)
 	}
-	log.Println("SQL Store:: PostgreSQL ready.")
+
+	log.Printf("SQL Store:: PostgreSQL ready with table %s", tableName)
 
 	// Initialize SQLStore with concurrent write support
 	store := &SQLStore{
 		db:      db,
-		table:   table,
+		table:   tableName,
 		writeCh: make(chan operation, maxConcurrency), // Buffered channel for queuing operations
 		wg:      &sync.WaitGroup{},
 	}
@@ -65,7 +68,7 @@ func NewSQLStore(connStr string, maxConcurrency int) (persistence.Persistence, e
 
 // SaveToDisk writes a single key-value pair to the SQL database.
 func (s *SQLStore) SaveToDisk(key, value, op string) {
-	s.wg.Add(1)                            // Increment WaitGroup for new operation
+	s.wg.Add(1)                    // Increment WaitGroup for new operation
 	s.writeCh <- operation{key, value, op} // Enqueue operation
 }
 
@@ -78,7 +81,7 @@ func (s *SQLStore) SaveAllToDisk(store map[string]string) {
 
 // Load retrieves all key-value pairs from the SQL database.
 func (s *SQLStore) Load() (map[string]string, error) {
-	rows, err := s.db.Query("SELECT key, value FROM kv_store")
+	rows, err := s.db.Query(fmt.Sprintf("SELECT key, value FROM %s", s.table))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func (s *SQLStore) Load() (map[string]string, error) {
 // ShutDown closes the database connection.
 func (s *SQLStore) ShutDown() {
 	close(s.writeCh) // Close the write channel to stop worker goroutines
-	s.wg.Wait()      // Wait for all operations to finish
+	s.wg.Wait()     // Wait for all operations to finish
 	err := s.db.Close()
 	if err != nil {
 		log.Printf("Error shutting down database: %v", err)
@@ -117,12 +120,12 @@ func (s *SQLStore) startWriteWorker() {
 // writeData performs the actual database write operation.
 func (s *SQLStore) writeData(op operation) {
 	if op.op == "delete" {
-		_, err := s.db.Exec("DELETE FROM kv_store WHERE key = $1", op.key)
+		_, err := s.db.Exec(fmt.Sprintf("DELETE FROM %s WHERE key = $1", s.table), op.key)
 		if err != nil {
 			log.Printf("Error deleting from disk: %v", err)
 		}
 	} else {
-		_, err := s.db.Exec("INSERT INTO kv_store (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", op.key, op.value)
+		_, err := s.db.Exec(fmt.Sprintf("INSERT INTO %s (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", s.table), op.key, op.value)
 		if err != nil {
 			log.Printf("Error saving to disk: %v", err)
 		}
