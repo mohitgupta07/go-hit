@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS kv_store (
 // SQLStore represents a store backed by an SQL database.
 type SQLStore struct {
 	db *sql.DB
+    table string
 }
 
 // Function to create the kv_store table if it doesn't exist
@@ -28,6 +29,7 @@ func createKVStoreTable(db *sql.DB) error {
 
 // NewSQLStore initializes a new SQLStore.
 func NewSQLStore(connStr string) (persistence.Persistence, error) {
+    table := "kv_store"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
@@ -37,7 +39,7 @@ func NewSQLStore(connStr string) (persistence.Persistence, error) {
 		log.Fatal(err)
 	}
 	log.Println("Sql Store:: Postgres ready.")
-	return &SQLStore{db: db}, nil
+	return &SQLStore{db: db, table: table}, nil
 }
 
 // SaveToDisk writes a single key-value pair to the SQL database.
