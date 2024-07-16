@@ -31,7 +31,7 @@ func startWorker(id int, filepath string, localData *SafeMap, wg *sync.WaitGroup
 	// Load data using singleLoad function and store in localData
 	k, v, err := singleLoad(filepath)
 	if err != nil {
-		fmt.Printf("Error loading file %s: %v\n", filepath, err)
+		fmt.Printf("Error loading file %s: %v:: %d\n", filepath, err, id)
 		return
 	}
 	// localData.Set(k, v)

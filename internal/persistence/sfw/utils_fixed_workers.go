@@ -38,7 +38,7 @@ func singleLoad(filepath string) (string, string, error) {
 
 // Worker function that processes files and stores results locally
 func worker(id int, file_jobs <-chan string, wg *sync.WaitGroup,
-	localData []map[string]string, mu *sync.Mutex) {
+	localData []map[string]string) {
 	defer wg.Done()
 	threadLocalData := localData[id]
 
@@ -128,12 +128,11 @@ func LoaderUtil(dirpath string, numWorkers int) map[string]string {
 		localData[i] = make(map[string]string)
 	}
 
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 
 	for i := 0; i < numWorkers; i++ {
-		go worker(i, file_jobs, &wg, localData, &mu)
+		go worker(i, file_jobs, &wg, localData)
 	}
 
 	for _, file := range files {
