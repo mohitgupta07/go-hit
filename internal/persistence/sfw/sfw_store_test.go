@@ -12,7 +12,7 @@ const benchmarkDir = "./benchmark_data"
 // BenchmarkSaveToDisk benchmarks the SaveToDisk method
 func BenchmarkSaveToDisk(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistenceObj, err := NewSFWPersistence(benchmarkDir, 8) // Use a higher ioLimit for benchmarks
+	persistenceObj, err := NewSFWPersistence(benchmarkDir, 16) // Use a higher ioLimit for benchmarks
 	persistence := persistenceObj.(*SFWPersistence)
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)
