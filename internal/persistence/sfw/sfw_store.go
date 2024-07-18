@@ -7,16 +7,15 @@ import (
 	"math/rand"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/Mohitgupta07/go-hit/internal/persistence"
 )
 
 type SFWPersistence struct {
-	dirPath  string
-	queues   []chan operation // Slice of channels for queuing operations
-	wg       *sync.WaitGroup  // WaitGroup to manage concurrent operations
-	ioLimit  int              // Maximum number of concurrent IO operations
+	dirPath string
+	queues  []chan *operation // Slice of channels for queuing operations
+	wg      *sync.WaitGroup   // WaitGroup to manage concurrent operations
+	ioLimit int               // Maximum number of concurrent IO operations
 }
 
 type operation struct {
@@ -34,15 +33,15 @@ func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, er
 
 	jp := &SFWPersistence{
 		dirPath: dirPath,
-		queues:  make([]chan operation, ioLimit), // Create multiple channels for queuing operations
+		queues:  make([]chan *operation, ioLimit), // Create multiple channels for queuing operations
 		ioLimit: ioLimit,
 		wg:      &sync.WaitGroup{},
 	}
 
 	// Initialize each queue channel and start the write group in separate goroutines.
 	for i := 0; i < ioLimit; i++ {
-		jp.queues[i] = make(chan operation, 100000) // Buffered channel for queuing operations
-		jp.wg.Add(1)                                // Increment WaitGroup for new operation
+		jp.queues[i] = make(chan *operation, 200) // Buffered channel for queuing operations
+		jp.wg.Add(1)                              // Increment WaitGroup for new operation
 		go jp.startWriteGroup(i)
 	}
 
@@ -51,9 +50,9 @@ func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, er
 
 func (jp *SFWPersistence) SaveToDisk(key, value, op string) {
 	// Randomly select a queue channel to push the operation
-	rand.Seed(time.Now().UnixNano())
+	// rand.Seed(time.Now().UnixNano())
 	randomQueue := jp.queues[rand.Intn(jp.ioLimit)]
-	randomQueue <- operation{key, value, op} // Enqueue operation
+	randomQueue <- &operation{key, value, op} // Enqueue operation
 }
 
 func (jp *SFWPersistence) SaveAllToDisk(store map[string]string) {
@@ -69,7 +68,7 @@ func (jp *SFWPersistence) startWriteGroup(queueIndex int) {
 	}
 }
 
-func (jp *SFWPersistence) writeData(op operation) {
+func (jp *SFWPersistence) writeData(op *operation) {
 	data := map[string]string{op.key: op.value}
 	if op.op == "delete" {
 		data = map[string]string{op.key: ""}
