@@ -1,12 +1,14 @@
 package sfw
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/Mohitgupta07/go-hit/internal/persistence"
 )
@@ -40,8 +42,8 @@ func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, er
 
 	// Initialize each queue channel and start the write group in separate goroutines.
 	for i := 0; i < ioLimit; i++ {
-		jp.queues[i] = make(chan *operation, 200) // Buffered channel for queuing operations
-		jp.wg.Add(1)                              // Increment WaitGroup for new operation
+		jp.queues[i] = make(chan *operation, 1000) // Buffered channel for queuing operations
+		jp.wg.Add(1)                               // Increment WaitGroup for new operation
 		go jp.startWriteGroup(i)
 	}
 
@@ -49,8 +51,9 @@ func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, er
 }
 
 func (jp *SFWPersistence) SaveToDisk(key, value, op string) {
+	// todo: avoid blocking thread if one queue is full.
 	// Randomly select a queue channel to push the operation
-	// rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano())
 	randomQueue := jp.queues[rand.Intn(jp.ioLimit)]
 	randomQueue <- &operation{key, value, op} // Enqueue operation
 }
@@ -63,30 +66,57 @@ func (jp *SFWPersistence) SaveAllToDisk(store map[string]string) {
 
 func (jp *SFWPersistence) startWriteGroup(queueIndex int) {
 	defer jp.wg.Done()
-	for op := range jp.queues[queueIndex] {
-		jp.writeData(op) // Handle operation
+	batchSize := 200 // Number of operations to batch together
+	ops := make([]*operation, 0, batchSize)
+	timer := time.NewTimer(10 * time.Millisecond)
+
+	for {
+		select {
+		case op, ok := <-jp.queues[queueIndex]:
+			if !ok {
+				// Channel closed, process remaining operations
+				jp.writeBatch(ops)
+				return
+			}
+			ops = append(ops, op)
+			if len(ops) >= batchSize {
+				jp.writeBatch(ops)
+				ops = ops[:0] // Reset the slice for the next batch
+			}
+		case <-timer.C:
+			if len(ops) > 0 {
+				jp.writeBatch(ops)
+				ops = ops[:0] // Reset the slice for the next batch
+			}
+			timer.Reset(10 * time.Millisecond)
+		}
 	}
 }
 
-func (jp *SFWPersistence) writeData(op *operation) {
-	data := map[string]string{op.key: op.value}
-	if op.op == "delete" {
-		data = map[string]string{op.key: ""}
-	}
+func (jp *SFWPersistence) writeBatch(ops []*operation) {
+	for _, op := range ops {
+		data := map[string]string{op.key: op.value}
+		if op.op == "delete" {
+			data = map[string]string{op.key: ""}
+		}
 
-	filePath := fmt.Sprintf("%s/%s.json", jp.dirPath, op.key)
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
-	}
-	defer file.Close()
+		filePath := fmt.Sprintf("%s/%s.json", jp.dirPath, op.key)
+		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			return
+		}
 
-	enc := json.NewEncoder(file)
-	err = enc.Encode(data)
-	if err != nil {
-		fmt.Println("Error encoding data to JSON:", err)
-		return
+		writer := bufio.NewWriter(file)
+		enc := json.NewEncoder(writer)
+		err = enc.Encode(data)
+		if err != nil {
+			fmt.Println("Error encoding data to JSON:", err)
+			return
+		}
+
+		writer.Flush()
+		file.Close()
 	}
 }
 
