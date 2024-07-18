@@ -39,8 +39,12 @@ func NewKeyValueStore(p persistence.Persistence) *KeyValueStore {
 func (kv *KeyValueStore) Set(key, value string) {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
+	opType := "set"
+	if _, ok := kv.store[key]; ok {
+		opType = "update"
+	}
 	kv.store[key] = value
-	kv.enqueueSaveRequest(key, value, "set")
+	kv.enqueueSaveRequest(key, value, opType)
 }
 
 func (kv *KeyValueStore) Get(key string) string {

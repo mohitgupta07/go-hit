@@ -25,7 +25,7 @@ var kvStore *datastore.KeyValueStore
 const IOWorkers = 5
 
 func init() {
-	persistence_mode := "cassandra"
+	persistence_mode := "sfw"
 	var persistenceObject persistence.Persistence
 	// Replace with the actual type
 
@@ -45,9 +45,9 @@ func init() {
 		}
 	case "cassandra":
 		var err error
-		clusterHosts := []string{"127.0.0.1"}                                                   // Replace with your Cassandra cluster hosts
-		keyspace := "kv_store"                                                                  // Replace with your keyspace name
-		persistenceObject, err = cassandra.NewCassandraStore(clusterHosts, keyspace, IOWorkers) // Example for RDBMS
+		clusterHosts := []string{"127.0.0.1"}                                                               // Replace with your Cassandra cluster hosts
+		keyspace := "kv_store"                                                                              // Replace with your keyspace name
+		persistenceObject, err = cassandra.NewCassandraStore(clusterHosts, keyspace, "kv_table", IOWorkers) // Example for RDBMS
 		if err != nil {
 			log.Fatalf("Failed to initialize RDBMS persistence object: %v", err)
 		}

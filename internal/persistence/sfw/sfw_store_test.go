@@ -12,7 +12,7 @@ const benchmarkDir = "./benchmark_data"
 // BenchmarkSaveToDisk benchmarks the SaveToDisk method
 func BenchmarkSaveToDisk(b *testing.B) {
 	// Create a new instance of SFWPersistence for benchmarking
-	persistenceObj, err := NewSFWPersistence(benchmarkDir, 10) // Use a higher ioLimit for benchmarks
+	persistenceObj, err := NewSFWPersistence(benchmarkDir, 8) // Use a higher ioLimit for benchmarks
 	persistence := persistenceObj.(*SFWPersistence)
 	if err != nil {
 		b.Fatalf("Error creating persistence object: %v", err)
@@ -29,9 +29,7 @@ func BenchmarkSaveToDisk(b *testing.B) {
 		op := "save"
 		persistence.SaveToDisk(key, value, op)
 	}
-
-	// Wait for all operations to finish
-	persistence.wg.Wait()
+	persistence.ShutDown()
 }
 
 // BenchmarkLoad benchmarks the Load method
@@ -51,9 +49,10 @@ func BenchmarkLoad(b *testing.B) {
 		op := "save"
 		persistence.SaveToDisk(key, value, op)
 	}
-	persistence.wg.Wait()
+	persistence.ShutDown()
 	fmt.Println("saving done")
 	// Reset benchmark timer before starting
+	fmt.Println("Running load part")
 	b.ResetTimer()
 
 	// Run the benchmark

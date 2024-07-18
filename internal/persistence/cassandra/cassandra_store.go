@@ -1,6 +1,7 @@
 package cassandra
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/Mohitgupta07/go-hit/internal/persistence"
@@ -57,7 +58,7 @@ func (s *CassandraStore) SaveAllToDisk(store map[string]string) {
 
 // Load retrieves all key-value pairs from the Cassandra database.
 func (s *CassandraStore) Load() (map[string]string, error) {
-	iter := s.session.Query("SELECT key, value FROM kv_store").Iter()
+	iter := s.session.Query(fmt.Sprintf("SELECT key, value FROM %s.%s", s.keyspace, s.tablename)).Iter()
 	store := make(map[string]string)
 	var key, value string
 	for iter.Scan(&key, &value) {
@@ -87,17 +88,42 @@ func (s *CassandraStore) startWriteWorker() {
 
 // writeData performs the actual database write operation.
 func (s *CassandraStore) writeData(op operation) {
-	if op.op == "delete" {
-		err := s.session.Query("DELETE FROM kv_store WHERE key = ?", op.key).Exec()
-		if err != nil {
-			log.Printf("Error deleting from disk: %v", err)
+	switch op.op {
+	case "delete":
+		s.delete(op.key)
+	case "set":
+		if err := s.insert(op.key, op.value); err != nil {
+			log.Printf("Failed to insert data: %v", err)
 		}
-	} else {
-		err := s.session.Query("INSERT INTO kv_store (key, value) VALUES (?, ?)", op.key, op.value).Exec()
-		if err != nil {
-			log.Printf("Error saving to disk: %v", err)
+	case "update":
+		if err := s.update(op.key, op.value); err != nil {
+			log.Printf("Failed to update data: %v", err)
 		}
 	}
+}
+
+func (s *CassandraStore) delete(key string) error {
+	err := s.session.Query("DELETE FROM kv_store WHERE key = ?", key).Exec()
+	if err != nil {
+		return fmt.Errorf("error deleting from disk: %v", err)
+	}
+	return nil
+}
+
+func (s *CassandraStore) insert(key, value string) error {
+	query := fmt.Sprintf("INSERT INTO %s.%s (key, value) VALUES (?, ?)", s.keyspace, s.tablename)
+	if err := s.session.Query(query, key, value).Exec(); err != nil {
+		return fmt.Errorf("failed to execute insert query: %v", err)
+	}
+	return nil
+}
+
+func (s *CassandraStore) update(key, value string) error {
+	query := fmt.Sprintf("UPDATE %s.%s SET value = ? WHERE key = ?", s.keyspace, s.tablename)
+	if err := s.session.Query(query, value, key).Exec(); err != nil {
+		return fmt.Errorf("failed to execute update query: %v", err)
+	}
+	return nil
 }
 
 // Ensure CassandraStore implements persistence.Persistence interface

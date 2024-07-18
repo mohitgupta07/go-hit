@@ -32,13 +32,14 @@ func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, er
 
 	jp := &SFWPersistence{
 		dirPath: dirPath,
-		queue:   make(chan operation, ioLimit), // Buffered channel for queuing operations
+		queue:   make(chan operation, 100000), // Buffered channel for queuing operations
 		ioLimit: ioLimit,
 		wg:      &sync.WaitGroup{},
 	}
 
 	// Start the write group in a separate goroutines.
 	for i := 0; i < ioLimit; i++ {
+		jp.wg.Add(1) // Increment WaitGroup for new operation
 		go jp.startWriteGroup()
 	}
 
@@ -47,7 +48,6 @@ func NewSFWPersistence(dirPath string, ioLimit int) (persistence.Persistence, er
 
 func (jp *SFWPersistence) SaveToDisk(key, value, op string) {
 	// fmt.Println("SaveToDisk called:", key, value, op)
-	jp.wg.Add(1)                          // Increment WaitGroup for new operation
 	jp.queue <- operation{key, value, op} // Enqueue operation
 }
 
@@ -59,14 +59,16 @@ func (jp *SFWPersistence) SaveAllToDisk(store map[string]string) {
 
 func (jp *SFWPersistence) startWriteGroup() {
 	for op := range jp.queue {
+
 		// fmt.Println("called:", op)
 		jp.writeData(op) // Start new goroutine to handle operation
 	}
-	fmt.Println("operation processed")
+	defer jp.wg.Done()
+	// jp.wg.Done()
+	// fmt.Println("operation processed")
 }
 
 func (jp *SFWPersistence) writeData(op operation) {
-	defer jp.wg.Done()
 
 	data := map[string]string{op.key: op.value}
 	if op.op == "delete" {
@@ -90,7 +92,9 @@ func (jp *SFWPersistence) writeData(op operation) {
 }
 
 func (jp *SFWPersistence) ShutDown() {
+	// close the queue
 	jp.CloseQueue()
+	// once the queue is empty, go-routine workers get to know about it and wait for them to quit as well.
 	jp.Wait()
 	fmt.Println("All operations processed")
 }
@@ -100,12 +104,19 @@ func (jp *SFWPersistence) Wait() {
 }
 
 func (jp *SFWPersistence) CloseQueue() {
-	log.Println("len:", len(jp.queue))
+	// startTime := time.Now() // Start time measurement
+	log.Println("queue process left", len(jp.queue))
+	for len(jp.queue) > 0 {
+	}
+
 	close(jp.queue) // Close the queue to stop the StartWriteGroup loop
+
+	// elapsedTime := time.Since(startTime) // Calculate elapsed time
+	// log.Printf("Time taken to empty the queue with:  %s\n", elapsedTime)
 }
 
 func (jp *SFWPersistence) Load() (map[string]string, error) {
-	return LoadUtil(jp.dirPath, jp.ioLimit), nil
+	return LoaderUtil(jp.dirPath, jp.ioLimit), nil
 }
 
 // Example of usage:

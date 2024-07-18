@@ -139,6 +139,8 @@ func LoaderUtil(dirpath string, numWorkers int) map[string]string {
 		filepath := filepath.Join(dirpath, file.Name())
 		file_jobs <- filepath
 	}
+
+	// shutdown
 	close(file_jobs)
 
 	wg.Wait()
