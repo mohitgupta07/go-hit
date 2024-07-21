@@ -28,6 +28,6 @@ Simple objective of this is to create the best of all worlds like solution that 
 | **SFW with IO concurrency = 10**    |            |                    |                             |                               |
 | BenchmarkSaveToDisk                 | 16446      | 104123 ns/op       | 782 B/op                    |                               |
 | BenchmarkLoad                       | 1704       | 9426406 ns/op      | 3909961 B/op                |                               |
-| **Cassandra with IO concurrency = 10**    |            |                    |                             |                               |
+| **Cassandra with IO concurrency = 500**    |            |                    |                             |                               |
 | BenchmarkSaveToDisk                 | 103744      | 9803 ns/op       | 2899 B/op                    |                               |
 | BenchmarkLoad                       | 638       | 2193735 ns/op      | 132143 B/op                |                               |
