@@ -25,9 +25,9 @@ type CassandraStore struct {
 
 func NewCassandraStore(clusterHosts []string, keyspace string, tableName string, numWorkers int) (persistence.Persistence, error) {
 	cluster := gocql.NewCluster(clusterHosts...)
-	cluster.Keyspace = keyspace
 	session, err := cluster.CreateSession()
 	if err != nil {
+		fmt.Println("mohit here")
 		return nil, fmt.Errorf("failed to create session: %v", err)
 	}
 	// defer session.Close()
