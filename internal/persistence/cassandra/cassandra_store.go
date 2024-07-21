@@ -23,7 +23,7 @@ type CassandraStore struct {
 	wg        *sync.WaitGroup // WaitGroup to manage concurrent operations
 }
 
-func NewCassandraStore(clusterHosts []string, keyspace string, tableName string, numWorkers int) (persistence.Persistence, error) {
+func NewCassandraStore(clusterHosts []string, keyspace string, tableName string, numWorkers int) (*CassandraStore, error) {
 	cluster := gocql.NewCluster(clusterHosts...)
 	session, err := cluster.CreateSession()
 	if err != nil {
@@ -32,59 +32,12 @@ func NewCassandraStore(clusterHosts []string, keyspace string, tableName string,
 	// defer session.Close()
 
 	// Check if keyspace exists
-	keyspaceExists := false
-	query := fmt.Sprintf("SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s'", keyspace)
-	iter := session.Query(query).Iter()
-	var name string
-	for iter.Scan(&name) {
-		if name == keyspace {
-			keyspaceExists = true
-			break
-		}
-	}
-	if err := iter.Close(); err != nil {
-		return nil, fmt.Errorf("failed to check keyspace existence: %v", err)
-	}
-
 	// Create keyspace if it doesn't exist
-	if !keyspaceExists {
-		createKeyspaceQuery := fmt.Sprintf(`
-            CREATE KEYSPACE %s WITH REPLICATION = {
-                'class': 'SimpleStrategy',
-                'replication_factor': 1
-            }`, keyspace)
-		if err := session.Query(createKeyspaceQuery).Exec(); err != nil {
-			return nil, fmt.Errorf("failed to create keyspace: %v", err)
-		}
-		log.Printf("Created keyspace: %s", keyspace)
-	}
-
 	// Check if table exists in keyspace
-	tableExists := false
-	query = fmt.Sprintf("SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s' AND table_name = '%s'", keyspace, tableName)
-	iter = session.Query(query).Iter()
-	var tableNameFromDB string
-	for iter.Scan(&tableNameFromDB) {
-		if tableNameFromDB == tableName {
-			tableExists = true
-			break
-		}
-	}
-	if err := iter.Close(); err != nil {
-		return nil, fmt.Errorf("failed to check table existence: %v", err)
-	}
-
 	// Create table if it doesn't exist
-	if !tableExists {
-		createTableQuery := fmt.Sprintf(`
-            CREATE TABLE %s.%s (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )`, keyspace, tableName)
-		if err := session.Query(createTableQuery).Exec(); err != nil {
-			return nil, fmt.Errorf("failed to create table: %v", err)
-		}
-		log.Printf("Created table: %s.%s", keyspace, tableName)
+	shouldReturn, err := createKeyspaceQuery(keyspace, session, tableName)
+	if shouldReturn {
+		return nil, err
 	}
 
 	// Initialize CassandraStore
@@ -104,6 +57,61 @@ func NewCassandraStore(clusterHosts []string, keyspace string, tableName string,
 	return store, nil
 }
 
+func createKeyspaceQuery(keyspace string, session *gocql.Session, tableName string) (bool, error) {
+	keyspaceExists := false
+	query := fmt.Sprintf("SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '%s'", keyspace)
+	iter := session.Query(query).Iter()
+	var name string
+	for iter.Scan(&name) {
+		if name == keyspace {
+			keyspaceExists = true
+			break
+		}
+	}
+	if err := iter.Close(); err != nil {
+		return true, fmt.Errorf("failed to check keyspace existence: %v", err)
+	}
+
+	if !keyspaceExists {
+		createKeyspaceQuery := fmt.Sprintf(`
+            CREATE KEYSPACE %s WITH REPLICATION = {
+                'class': 'SimpleStrategy',
+                'replication_factor': 1
+            }`, keyspace)
+		if err := session.Query(createKeyspaceQuery).Exec(); err != nil {
+			return true, fmt.Errorf("failed to create keyspace: %v", err)
+		}
+		log.Printf("Created keyspace: %s", keyspace)
+	}
+
+	tableExists := false
+	query = fmt.Sprintf("SELECT table_name FROM system_schema.tables WHERE keyspace_name = '%s' AND table_name = '%s'", keyspace, tableName)
+	iter = session.Query(query).Iter()
+	var tableNameFromDB string
+	for iter.Scan(&tableNameFromDB) {
+		if tableNameFromDB == tableName {
+			tableExists = true
+			break
+		}
+	}
+	if err := iter.Close(); err != nil {
+		return true, fmt.Errorf("failed to check table existence: %v", err)
+	}
+
+	if !tableExists {
+		createTableQuery := fmt.Sprintf(`
+            CREATE TABLE %s.%s (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )`, keyspace, tableName)
+		if err := session.Query(createTableQuery).Exec(); err != nil {
+			return true, fmt.Errorf("failed to create table: %v", err)
+		}
+		log.Printf("Created table: %s.%s", keyspace, tableName)
+	}
+	return false, nil
+}
+
 // SaveToDisk writes a single key-value pair to the Cassandra database.
 func (s *CassandraStore) SaveToDisk(key, value, op string) {
 	// s.wg.Add(1)
@@ -120,6 +128,7 @@ func (s *CassandraStore) SaveAllToDisk(store map[string]string) {
 
 // Load retrieves all key-value pairs from the Cassandra database.
 func (s *CassandraStore) Load() (map[string]string, error) {
+	//TODO: Batch loading.
 	iter := s.session.Query(fmt.Sprintf("SELECT key, value FROM %s.%s", s.keyspace, s.tablename)).Iter()
 	store := make(map[string]string)
 	var key, value string
@@ -135,6 +144,7 @@ func (s *CassandraStore) Load() (map[string]string, error) {
 
 // ShutDown closes the database connection.
 func (s *CassandraStore) ShutDown() {
+	fmt.Println("data left to process:", len(s.writeCh))
 	close(s.writeCh)
 	s.wg.Wait()
 	s.session.Close()
@@ -164,8 +174,19 @@ func (s *CassandraStore) writeData(op operation) {
 	}
 }
 
+func (s *CassandraStore) dropCurrentTable() error {
+	query := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", s.keyspace, s.tablename)
+	// Drop the table
+	err := s.session.Query(query).Exec()
+	if err != nil {
+		return fmt.Errorf("error deleting from disk: %v", err)
+	}
+	return nil
+}
+
 func (s *CassandraStore) delete(key string) error {
-	err := s.session.Query("DELETE FROM kv_store WHERE key = ?", key).Exec()
+	query := fmt.Sprintf("DELETE From %s.%s WHERE key = ?", s.keyspace, s.tablename)
+	err := s.session.Query(query, key).Exec()
 	if err != nil {
 		return fmt.Errorf("error deleting from disk: %v", err)
 	}
