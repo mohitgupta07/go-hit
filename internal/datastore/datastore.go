@@ -88,7 +88,7 @@ func (kv *KeyValueStore) loadFromPersistence() {
 		return
 	}
 	kv.store = data
-	log.Printf("Loaded data from persistence: %v\n", kv.store)
+	log.Printf("Loaded data from persistence: %v\n", len(kv.store))
 }
 
 func (kv *KeyValueStore) worker() {
