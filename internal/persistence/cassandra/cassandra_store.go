@@ -27,7 +27,6 @@ func NewCassandraStore(clusterHosts []string, keyspace string, tableName string,
 	cluster := gocql.NewCluster(clusterHosts...)
 	session, err := cluster.CreateSession()
 	if err != nil {
-		fmt.Println("mohit here")
 		return nil, fmt.Errorf("failed to create session: %v", err)
 	}
 	// defer session.Close()
