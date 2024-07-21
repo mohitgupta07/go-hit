@@ -27,7 +27,7 @@ type saveRequest struct {
 func NewKeyValueStore(p persistence.Persistence) *KeyValueStore {
 	kv := &KeyValueStore{
 		store:       make(map[string]string),
-		saveQueue:   make(chan saveRequest, 1000), // Buffer channel to handle requests
+		saveQueue:   make(chan saveRequest), // Buffer channel to handle requests
 		quitWorker:  make(chan struct{}),
 		persistence: p,
 	}
