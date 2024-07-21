@@ -25,7 +25,7 @@ var kvStore *datastore.KeyValueStore
 const IOWorkers = 5
 
 func init() {
-	persistence_mode := "cassandra"
+	persistence_mode := "sfw"
 	var persistenceObject persistence.Persistence
 	// Replace with the actual type
 
