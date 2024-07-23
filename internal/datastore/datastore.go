@@ -81,6 +81,7 @@ func (kv *KeyValueStore) enqueueSaveRequest(key, value, op string) {
 }
 
 func (kv *KeyValueStore) loadFromPersistence() {
+	log.Println("Starting load from persistence (if any).")
 	data, err := kv.persistence.Load()
 	if err != nil {
 		// Handle error
